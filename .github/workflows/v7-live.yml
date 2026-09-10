@@ -2,6 +2,8 @@ name: V7 live Base snapshot
 on:
   push:
     branches: [main]
+  pull_request:
+    branches: [main]
   workflow_dispatch:
 jobs:
   test-and-snapshot:
