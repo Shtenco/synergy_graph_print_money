@@ -12,6 +12,8 @@ jobs:
   test-and-snapshot:
     runs-on: ubuntu-latest
     timeout-minutes: 25
+    env:
+      BASE_RPC_URL: https://base-rpc.publicnode.com
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -20,12 +22,8 @@ jobs:
       - run: pip install -e . pytest
       - run: pytest -q
       - name: Live Base discovery + pinned RPC probes
-        env:
-          BASE_RPC_URL: https://mainnet.base.org
         run: python scripts/run_v7.py --pages 10 --max-pools 240 --augment-dexes 5 --augment-pages 2 --max-hops 4 --rpc-probe-pools 60 --vault-token-checks 20 --sleep 15 --out artifacts
       - name: Exact Aerodrome V2 eth_call quote verification
-        env:
-          BASE_RPC_URL: https://mainnet.base.org
         run: python scripts/quote_v7.py --artifacts artifacts --max-candidates 20 --max-flash-usd 50000 --mev-guard-bps 5 --gas-reserve-usd 0.05
       - name: Render pinned candidate fork test
         run: python scripts/render_fork_test.py --artifacts artifacts --out test/generated/V7Candidate.t.sol
@@ -33,8 +31,6 @@ jobs:
         if: ${{ hashFiles('test/generated/V7Candidate.t.sol') != '' }}
       - name: Execute real Balancer flash loan on Base fork
         if: ${{ hashFiles('test/generated/V7Candidate.t.sol') != '' }}
-        env:
-          BASE_RPC_URL: https://mainnet.base.org
         run: |
           set +e
           forge test --match-contract V7GeneratedForkTest -vvv > artifacts/v7_fork.log 2>&1
