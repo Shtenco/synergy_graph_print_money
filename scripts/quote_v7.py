@@ -6,6 +6,7 @@ from pathlib import Path
 
 from synergy_graph.quotes import optimize_aerodrome_v2_cycle, token_price_usd
 from synergy_graph.uniswap_v3 import uniswap_v3_discovery_candidates, optimize_uniswap_v3_cycle
+from synergy_graph.slipstream import topology_candidates as slipstream_candidates, optimize_cycle as optimize_slipstream_cycle
 from synergy_graph.v7 import Pool, Rpc, write_csv
 
 BASE_WETH = "0x4200000000000000000000000000000000000006"
@@ -33,7 +34,7 @@ def load_csv(path: Path) -> list[dict[str,str]]:
 def main() -> None:
     p=argparse.ArgumentParser()
     p.add_argument("--artifacts",default="artifacts")
-    p.add_argument("--max-candidates",type=int,default=60)
+    p.add_argument("--max-candidates",type=int,default=40)
     p.add_argument("--max-flash-usd",type=float,default=50000)
     p.add_argument("--mev-guard-bps",type=float,default=5)
     p.add_argument("--gas-reserve-usd",type=float,default=.05)
@@ -53,37 +54,31 @@ def main() -> None:
 
     rows=[]
 
-    # 1) Exact Uniswap V3: build fresh candidates only from pools that can be
-    # validated against the canonical Base V3 factory and quoted at the pinned block.
+    # 1) Canonical Uniswap V3 Base pools, validated against factory and QuoterV2.
     uni_candidates=uniswap_v3_discovery_candidates(pools,max_hops=args.max_hops,top_k=args.max_candidates)
     write_csv(root/"v7_uniswap_v3_candidates.csv",uni_candidates)
     for c in uni_candidates:
-        q=optimize_uniswap_v3_cycle(
-            rpc,c,pools,block,
-            max_flash_usd=args.max_flash_usd,
-            mev_guard_bps=args.mev_guard_bps,
-            gas_reserve_usd=args.gas_reserve_usd,
-        )
+        q=optimize_uniswap_v3_cycle(rpc,c,pools,block,max_flash_usd=args.max_flash_usd,mev_guard_bps=args.mev_guard_bps,gas_reserve_usd=args.gas_reserve_usd)
         if q is not None:
-            q["gas_price_wei_snapshot"]=gas_price_wei
-            q["eth_price_usd_snapshot"]=eth_price_usd
-            rows.append(q)
+            q["gas_price_wei_snapshot"]=gas_price_wei;q["eth_price_usd_snapshot"]=eth_price_usd;rows.append(q)
 
-    # 2) Retain classic Aerodrome V2 exact validation for any discovery route
-    # composed entirely of pools verified by its factory.
+    # 2) Aerodrome Slipstream. MixedRouteQuoterV3 can quote all three CL factory
+    # generations in a single path. Every physical pool is independently checked
+    # against its on-chain factory + tickSpacing before its quote is trusted.
+    slip_candidates=slipstream_candidates(pools,max_hops=args.max_hops,top_k=args.max_candidates)
+    write_csv(root/"v7_slipstream_candidates.csv",slip_candidates)
+    slip_meta_cache={}
+    for c in slip_candidates:
+        q=optimize_slipstream_cycle(rpc,c,pools,block,max_flash_usd=args.max_flash_usd,mev_guard_bps=args.mev_guard_bps,gas_reserve_usd=args.gas_reserve_usd,meta_cache=slip_meta_cache)
+        if q is not None:
+            q["gas_price_wei_snapshot"]=gas_price_wei;q["eth_price_usd_snapshot"]=eth_price_usd;rows.append(q)
+
+    # 3) Classic Aerodrome V2 exact validation retained for compatible routes.
     discovery_candidates=load_csv(root/"v7_candidates.csv")[:args.max_candidates]
     for c in discovery_candidates:
-        q=optimize_aerodrome_v2_cycle(
-            rpc,c,pools,block,
-            max_flash_usd=args.max_flash_usd,
-            mev_guard_bps=args.mev_guard_bps,
-            gas_reserve_usd=args.gas_reserve_usd,
-        )
+        q=optimize_aerodrome_v2_cycle(rpc,c,pools,block,max_flash_usd=args.max_flash_usd,mev_guard_bps=args.mev_guard_bps,gas_reserve_usd=args.gas_reserve_usd)
         if q is not None:
-            q["adapter"]="aerodrome_v2"
-            q["gas_price_wei_snapshot"]=gas_price_wei
-            q["eth_price_usd_snapshot"]=eth_price_usd
-            rows.append(q)
+            q["adapter"]="aerodrome_v2";q["gas_price_wei_snapshot"]=gas_price_wei;q["eth_price_usd_snapshot"]=eth_price_usd;rows.append(q)
 
     rows.sort(key=lambda x:float(x["guarded_net_usd"]),reverse=True)
     write_csv(root/"v7_quote_results.csv",rows)
@@ -91,17 +86,17 @@ def main() -> None:
     best=verified[0] if verified else None
     (root/"v7_best_quote.json").write_text(json.dumps(best or {},indent=2),encoding="utf-8")
 
+    by_adapter={name:sum(x.get("adapter")==name and x.get("stage")=="QUOTE_VERIFIED" for x in rows) for name in ("uniswap_v3","aerodrome_slipstream","aerodrome_v2")}
     report["gas_price_wei_snapshot"]=gas_price_wei
     report["eth_price_usd_snapshot"]=eth_price_usd
     report["uniswap_v3_topology_candidates_for_exact_quote"]=len(uni_candidates)
+    report["slipstream_topology_candidates_for_exact_quote"]=len(slip_candidates)
+    report["slipstream_pools_validated_or_rejected"] = len(slip_meta_cache)
     report["exact_quote_rows"]=len(rows)
     report["quote_verified_cycles"]=len(verified)
-    report["quote_verified_by_adapter"]={
-        "uniswap_v3":sum(x.get("adapter")=="uniswap_v3" and x.get("stage")=="QUOTE_VERIFIED" for x in rows),
-        "aerodrome_v2":sum(x.get("adapter")=="aerodrome_v2" and x.get("stage")=="QUOTE_VERIFIED" for x in rows),
-    }
+    report["quote_verified_by_adapter"]=by_adapter
     report["best_quote"]=best
     report_path.write_text(json.dumps(report,indent=2),encoding="utf-8")
-    print(json.dumps({"quoted":len(rows),"verified":len(verified),"by_adapter":report["quote_verified_by_adapter"],"best":best},indent=2))
+    print(json.dumps({"quoted":len(rows),"verified":len(verified),"by_adapter":by_adapter,"best":best},indent=2))
 
 if __name__=="__main__":main()
