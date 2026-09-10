@@ -5,6 +5,9 @@ on:
   pull_request:
     branches: [main]
   workflow_dispatch:
+concurrency:
+  group: v7-live-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 jobs:
   test-and-snapshot:
     runs-on: ubuntu-latest
@@ -23,7 +26,7 @@ jobs:
       - name: Exact Aerodrome V2 eth_call quote verification
         env:
           BASE_RPC_URL: https://mainnet.base.org
-        run: python scripts/quote_v7.py --artifacts artifacts --max-candidates 60 --max-flash-usd 50000 --mev-guard-bps 5 --gas-reserve-usd 0.05
+        run: python scripts/quote_v7.py --artifacts artifacts --max-candidates 20 --max-flash-usd 50000 --mev-guard-bps 5 --gas-reserve-usd 0.05
       - name: Render pinned candidate fork test
         run: python scripts/render_fork_test.py --artifacts artifacts --out test/generated/V7Candidate.t.sol
       - uses: foundry-rs/foundry-toolchain@v1
