@@ -5,10 +5,15 @@ on:
   pull_request:
     branches: [main]
   workflow_dispatch:
+concurrency:
+  group: v7-live-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 jobs:
   test-and-snapshot:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 30
+    env:
+      BASE_RPC_URL: https://base-rpc.publicnode.com
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -17,10 +22,29 @@ jobs:
       - run: pip install -e . pytest
       - run: pytest -q
       - name: Live Base discovery + pinned RPC probes
-        env:
-          BASE_RPC_URL: https://mainnet.base.org
-        run: python scripts/run_v7.py --pages 12 --max-pools 240 --max-hops 4 --rpc-probe-pools 60 --vault-token-checks 20 --out artifacts
+        run: python scripts/run_v7.py --pages 10 --max-pools 240 --augment-dexes 5 --augment-pages 2 --max-hops 4 --rpc-probe-pools 60 --vault-token-checks 20 --sleep 15 --out artifacts
+      - name: Exact pinned-block quote verification
+        run: python scripts/quote_v7.py --artifacts artifacts --max-candidates 30 --max-flash-usd 50000 --mev-guard-bps 5 --gas-reserve-usd 0.05 --max-hops 4
+      - name: Render pinned candidate fork test
+        run: python scripts/render_fork_test.py --artifacts artifacts --out test/generated/V7Candidate.t.sol
+      - uses: foundry-rs/foundry-toolchain@v1
+        if: ${{ hashFiles('test/generated/V7Candidate.t.sol') != '' }}
+      - name: Execute real Balancer flash loan on Base fork
+        if: ${{ hashFiles('test/generated/V7Candidate.t.sol') != '' }}
+        run: |
+          set +e
+          forge test --match-contract V7GeneratedForkTest -vvv > artifacts/v7_fork.log 2>&1
+          code=$?
+          python - "$code" <<'PY'
+          import json,sys
+          from pathlib import Path
+          code=int(sys.argv[1]);Path('artifacts/v7_fork_result.json').write_text(json.dumps({'attempted':True,'fork_executable':code==0,'forge_exit_code':code},indent=2))
+          PY
+          cat artifacts/v7_fork.log
+          exit $code
       - uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: sag-v7-live-snapshot
           path: artifacts/
+          if-no-files-found: warn
