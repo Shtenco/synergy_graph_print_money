@@ -4,21 +4,28 @@ import argparse, json
 from pathlib import Path
 
 
+def skip(root: Path, out: Path, reason: str) -> None:
+    if out.exists():out.unlink()
+    plan={"rendered":False,"reason":reason};(root/"v7_fork_plan.json").write_text(json.dumps(plan,indent=2),encoding="utf-8");print(json.dumps(plan))
+
+
 def main() -> None:
     p=argparse.ArgumentParser();p.add_argument("--artifacts",default="artifacts");p.add_argument("--out",default="test/generated/V7Candidate.t.sol");args=p.parse_args()
-    root=Path(args.artifacts);best_path=root/"v7_best_quote.json";best=json.loads(best_path.read_text(encoding="utf-8")) if best_path.exists() else {}
-    plan={"rendered":False,"reason":"no QUOTE_VERIFIED Aerodrome V2 cycle"}
-    out=Path(args.out)
+    root=Path(args.artifacts);out=Path(args.out);best_path=root/"v7_best_quote.json";best=json.loads(best_path.read_text(encoding="utf-8")) if best_path.exists() else {}
     if not best:
-        if out.exists():out.unlink()
-        (root/"v7_fork_plan.json").write_text(json.dumps(plan,indent=2),encoding="utf-8");print(json.dumps(plan));return
+        skip(root,out,"no QUOTE_VERIFIED Aerodrome V2 cycle");return
+    eth_px=float(best.get("eth_price_usd_snapshot") or 0);gas_price=int(best.get("gas_price_wei_snapshot") or 0)
+    if eth_px<=0 or gas_price<=0:
+        skip(root,out,"missing live ETH/USD or gas-price snapshot; gas guard cannot be proven");return
     tokens=best["token_path"].split("|");stables=best["stable_flags"].split("|");factories=best["factory_addresses"].split("|");hops=int(best["hops"])
     if len(tokens)!=hops+1 or len(stables)!=hops or len(factories)!=hops or tokens[0].lower()!=tokens[-1].lower():raise SystemExit("invalid best quote route")
     route_lines=[]
     for i in range(hops):
         stable="true" if stables[i]=="1" else "false"
         route_lines.append(f"        routes[{i}] = IAeroRouter.Route({tokens[i]}, {tokens[i+1]}, {stable}, {factories[i]});")
-    start=tokens[0];amount=int(best["amount_in_raw"]);decimals=int(best["start_token_decimals"]);scale=10**decimals;start_px_e8=max(1,round(float(best["start_token_price_usd"])*1e8));eth_px_e8=max(1,round(float(best.get("eth_price_usd_snapshot") or 0)*1e8));gas_price=max(1,int(best.get("gas_price_wei_snapshot") or 1));mev_bps=max(0,round(float(best.get("mev_guard_bps") or 0)));block=int(best["block_number"])
+    start=tokens[0];amount=int(best["amount_in_raw"]);decimals=int(best["start_token_decimals"]);scale=10**decimals;start_px_e8=round(float(best["start_token_price_usd"])*1e8);eth_px_e8=round(eth_px*1e8);mev_bps=max(0,round(float(best.get("mev_guard_bps") or 0)));block=int(best["block_number"])
+    if start_px_e8<=0 or eth_px_e8<=0:
+        skip(root,out,"invalid USD price snapshot");return
     code=f'''// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
