@@ -63,38 +63,17 @@ def inspect_aerodrome_v2_pool(rpc: Rpc, pool: Pool, block: str) -> AeroPoolMeta 
             return None
         if {token0, token1} != {pool.token0.lower(), pool.token1.lower()}:
             return None
-        canonical = call_address(
-            rpc,
-            factory,
-            "getPool(address,address,bool)",
-            ["address", "address", "bool"],
-            [token0, token1, stable],
-            block,
-        )
+        canonical = call_address(rpc, factory, "getPool(address,address,bool)", ["address", "address", "bool"], [token0, token1, stable], block)
         if canonical != pool.address.lower():
             return None
-        fee_bps = call_uint(
-            rpc,
-            factory,
-            "getFee(address,bool)",
-            ["address", "bool"],
-            [pool.address, stable],
-            block,
-        )
+        fee_bps = call_uint(rpc, factory, "getFee(address,bool)", ["address", "bool"], [pool.address, stable], block)
         return AeroPoolMeta(pool.address.lower(), token0, token1, stable, factory, fee_bps)
     except Exception:
         return None
 
 
 def aerodrome_v2_amount_out(rpc: Rpc, pool: str, amount_in: int, token_in: str, block: str) -> int:
-    return call_uint(
-        rpc,
-        pool,
-        "getAmountOut(uint256,address)",
-        ["uint256", "address"],
-        [amount_in, token_in],
-        block,
-    )
+    return call_uint(rpc, pool, "getAmountOut(uint256,address)", ["uint256", "address"], [amount_in, token_in], block)
 
 
 def token_price_usd(token: str, pools: list[Pool]) -> float:
@@ -139,7 +118,6 @@ def optimize_aerodrome_v2_cycle(
         return None
 
     metas: list[AeroPoolMeta] = []
-    route_pools: list[Pool] = []
     for i, address in enumerate(addresses):
         pool = pool_map.get(address)
         if pool is None:
@@ -148,66 +126,79 @@ def optimize_aerodrome_v2_cycle(
         if meta is None or {tokens[i], tokens[i + 1]} != {meta.token0, meta.token1}:
             return None
         metas.append(meta)
-        route_pools.append(pool)
-
-    start = tokens[0]
-    decimals = erc20_decimals(rpc, start, block)
-    if decimals > 36:
-        return None
-    px = token_price_usd(start, pools)
-    if px <= 0:
-        return None
-    vault_raw = erc20_balance(rpc, start, BALANCER_V2_VAULT, block)
-    vault_usd = vault_raw / (10**decimals) * px
-    max_usd = min(max_flash_usd, vault_usd)
-    if max_usd < min_trade_usd:
-        return None
 
     best: dict[str, Any] | None = None
-    quote_errors = 0
-    for usd in _usd_grid(min_trade_usd, max_usd, grid_points):
-        amount_in = int(usd / px * (10**decimals))
-        if amount_in <= 0 or amount_in > vault_raw:
-            continue
-        amount = amount_in
+    total_quote_errors = 0
+    n = len(addresses)
+
+    # A closed cycle may start at any vertex. Rotate it so Balancer liquidity in
+    # one scarce token does not cause a false rejection of an otherwise valid cycle.
+    for rotation in range(n):
+        r_addresses = addresses[rotation:] + addresses[:rotation]
+        r_metas = metas[rotation:] + metas[:rotation]
+        core_tokens = tokens[:-1]
+        r_core = core_tokens[rotation:] + core_tokens[:rotation]
+        r_tokens = r_core + [r_core[0]]
+        start = r_tokens[0]
         try:
-            for i, meta in enumerate(metas):
-                amount = aerodrome_v2_amount_out(rpc, meta.address, amount, tokens[i], block)
-                if amount <= 0:
-                    raise RuntimeError("zero quote")
+            decimals = erc20_decimals(rpc, start, block)
+            if decimals > 36:
+                continue
+            px = token_price_usd(start, pools)
+            if px <= 0:
+                continue
+            vault_raw = erc20_balance(rpc, start, BALANCER_V2_VAULT, block)
         except Exception:
-            quote_errors += 1
             continue
-        profit_raw = amount - amount_in
-        profit_usd = profit_raw / (10**decimals) * px
-        gross_bps = (amount / amount_in - 1.0) * 10_000.0
-        guarded_net_usd = profit_usd - usd * mev_guard_bps / 10_000.0 - gas_reserve_usd
-        row = {
-            "stage": "QUOTE_VERIFIED" if guarded_net_usd > 0 else "QUOTE_REJECTED",
-            "block_number": int(block, 16),
-            "start_token": start,
-            "start_token_decimals": decimals,
-            "start_token_price_usd": px,
-            "vault_balance_raw": vault_raw,
-            "vault_balance_usd": vault_usd,
-            "amount_in_raw": amount_in,
-            "amount_in_usd": usd,
-            "amount_out_raw": amount,
-            "gross_profit_raw": profit_raw,
-            "gross_profit_usd": profit_usd,
-            "gross_edge_bps_exact": gross_bps,
-            "mev_guard_bps": mev_guard_bps,
-            "gas_reserve_usd": gas_reserve_usd,
-            "guarded_net_usd": guarded_net_usd,
-            "hops": len(addresses),
-            "pool_addresses": "|".join(addresses),
-            "token_path": "|".join(tokens),
-            "stable_flags": "|".join("1" if m.stable else "0" for m in metas),
-            "factory_addresses": "|".join(m.factory for m in metas),
-            "fee_bps_onchain": "|".join(str(m.fee_bps) for m in metas),
-            "router": AERODROME_V2_ROUTER,
-            "quote_errors_during_grid": quote_errors,
-        }
-        if best is None or row["guarded_net_usd"] > best["guarded_net_usd"]:
-            best = row
+        vault_usd = vault_raw / (10**decimals) * px
+        max_usd = min(max_flash_usd, vault_usd)
+        if max_usd < min_trade_usd:
+            continue
+
+        for usd in _usd_grid(min_trade_usd, max_usd, grid_points):
+            amount_in = int(usd / px * (10**decimals))
+            if amount_in <= 0 or amount_in > vault_raw:
+                continue
+            amount = amount_in
+            try:
+                for i, meta in enumerate(r_metas):
+                    amount = aerodrome_v2_amount_out(rpc, meta.address, amount, r_tokens[i], block)
+                    if amount <= 0:
+                        raise RuntimeError("zero quote")
+            except Exception:
+                total_quote_errors += 1
+                continue
+            profit_raw = amount - amount_in
+            profit_usd = profit_raw / (10**decimals) * px
+            gross_bps = (amount / amount_in - 1.0) * 10_000.0
+            guarded_net_usd = profit_usd - usd * mev_guard_bps / 10_000.0 - gas_reserve_usd
+            row = {
+                "stage": "QUOTE_VERIFIED" if guarded_net_usd > 0 else "QUOTE_REJECTED",
+                "block_number": int(block, 16),
+                "cycle_rotation": rotation,
+                "start_token": start,
+                "start_token_decimals": decimals,
+                "start_token_price_usd": px,
+                "vault_balance_raw": vault_raw,
+                "vault_balance_usd": vault_usd,
+                "amount_in_raw": amount_in,
+                "amount_in_usd": usd,
+                "amount_out_raw": amount,
+                "gross_profit_raw": profit_raw,
+                "gross_profit_usd": profit_usd,
+                "gross_edge_bps_exact": gross_bps,
+                "mev_guard_bps": mev_guard_bps,
+                "gas_reserve_usd": gas_reserve_usd,
+                "guarded_net_usd": guarded_net_usd,
+                "hops": n,
+                "pool_addresses": "|".join(r_addresses),
+                "token_path": "|".join(r_tokens),
+                "stable_flags": "|".join("1" if m.stable else "0" for m in r_metas),
+                "factory_addresses": "|".join(m.factory for m in r_metas),
+                "fee_bps_onchain": "|".join(str(m.fee_bps) for m in r_metas),
+                "router": AERODROME_V2_ROUTER,
+                "quote_errors_during_grid": total_quote_errors,
+            }
+            if best is None or row["guarded_net_usd"] > best["guarded_net_usd"]:
+                best = row
     return best
