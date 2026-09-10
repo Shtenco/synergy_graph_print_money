@@ -8,7 +8,7 @@ on:
 jobs:
   test-and-snapshot:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -19,8 +19,10 @@ jobs:
       - name: Live Base discovery + pinned RPC probes
         env:
           BASE_RPC_URL: https://mainnet.base.org
-        run: python scripts/run_v7.py --pages 12 --max-pools 240 --max-hops 4 --rpc-probe-pools 60 --vault-token-checks 20 --out artifacts
+        run: python scripts/run_v7.py --pages 10 --max-pools 240 --augment-dexes 5 --augment-pages 2 --max-hops 4 --rpc-probe-pools 60 --vault-token-checks 20 --sleep 15 --out artifacts
       - uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: sag-v7-live-snapshot
           path: artifacts/
+          if-no-files-found: warn
