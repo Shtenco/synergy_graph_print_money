@@ -11,7 +11,7 @@ concurrency:
 jobs:
   test-and-snapshot:
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 30
     env:
       BASE_RPC_URL: https://base-rpc.publicnode.com
     steps:
@@ -23,8 +23,8 @@ jobs:
       - run: pytest -q
       - name: Live Base discovery + pinned RPC probes
         run: python scripts/run_v7.py --pages 10 --max-pools 240 --augment-dexes 5 --augment-pages 2 --max-hops 4 --rpc-probe-pools 60 --vault-token-checks 20 --sleep 15 --out artifacts
-      - name: Exact Aerodrome V2 eth_call quote verification
-        run: python scripts/quote_v7.py --artifacts artifacts --max-candidates 20 --max-flash-usd 50000 --mev-guard-bps 5 --gas-reserve-usd 0.05
+      - name: Exact pinned-block quote verification
+        run: python scripts/quote_v7.py --artifacts artifacts --max-candidates 30 --max-flash-usd 50000 --mev-guard-bps 5 --gas-reserve-usd 0.05 --max-hops 4
       - name: Render pinned candidate fork test
         run: python scripts/render_fork_test.py --artifacts artifacts --out test/generated/V7Candidate.t.sol
       - uses: foundry-rs/foundry-toolchain@v1
