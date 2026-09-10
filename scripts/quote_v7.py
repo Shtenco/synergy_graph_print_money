@@ -4,8 +4,10 @@ import argparse, csv, json, os
 from dataclasses import fields
 from pathlib import Path
 
-from synergy_graph.quotes import optimize_aerodrome_v2_cycle
+from synergy_graph.quotes import optimize_aerodrome_v2_cycle, token_price_usd
 from synergy_graph.v7 import Pool, Rpc, write_csv
+
+BASE_WETH = "0x4200000000000000000000000000000000000006"
 
 
 def load_pools(path: Path) -> list[Pool]:
@@ -33,15 +35,17 @@ def main() -> None:
     rpc_url=os.environ.get("BASE_RPC_URL","").strip()
     if not rpc_url:raise SystemExit("BASE_RPC_URL is required for quote verification")
     rpc=Rpc(rpc_url);pools=load_pools(root/"v7_pools.csv");cands=load_csv(root/"v7_candidates.csv")[:args.max_candidates]
+    gas_price_wei=int(rpc.call("eth_gasPrice",[]),16);eth_price_usd=token_price_usd(BASE_WETH,pools)
     rows=[]
     for c in cands:
         q=optimize_aerodrome_v2_cycle(rpc,c,pools,block,max_flash_usd=args.max_flash_usd,mev_guard_bps=args.mev_guard_bps,gas_reserve_usd=args.gas_reserve_usd)
-        if q is not None:rows.append(q)
+        if q is not None:
+            q["gas_price_wei_snapshot"]=gas_price_wei;q["eth_price_usd_snapshot"]=eth_price_usd;rows.append(q)
     rows.sort(key=lambda x:float(x["guarded_net_usd"]),reverse=True);write_csv(root/"v7_quote_results.csv",rows)
     verified=[x for x in rows if x["stage"]=="QUOTE_VERIFIED"]
     best=verified[0] if verified else None
     (root/"v7_best_quote.json").write_text(json.dumps(best or {},indent=2),encoding="utf-8")
-    report["aerodrome_v2_cycles_exactly_quoted"]=len(rows);report["quote_verified_cycles"]=len(verified);report["best_quote"]=best;report_path.write_text(json.dumps(report,indent=2),encoding="utf-8")
+    report["gas_price_wei_snapshot"]=gas_price_wei;report["eth_price_usd_snapshot"]=eth_price_usd;report["aerodrome_v2_cycles_exactly_quoted"]=len(rows);report["quote_verified_cycles"]=len(verified);report["best_quote"]=best;report_path.write_text(json.dumps(report,indent=2),encoding="utf-8")
     print(json.dumps({"quoted":len(rows),"verified":len(verified),"best":best},indent=2))
 
 if __name__=="__main__":main()

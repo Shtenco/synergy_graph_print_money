@@ -8,7 +8,7 @@ on:
 jobs:
   test-and-snapshot:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -24,6 +24,25 @@ jobs:
         env:
           BASE_RPC_URL: https://mainnet.base.org
         run: python scripts/quote_v7.py --artifacts artifacts --max-candidates 60 --max-flash-usd 50000 --mev-guard-bps 5 --gas-reserve-usd 0.05
+      - name: Render pinned candidate fork test
+        run: python scripts/render_fork_test.py --artifacts artifacts --out test/generated/V7Candidate.t.sol
+      - uses: foundry-rs/foundry-toolchain@v1
+        if: ${{ hashFiles('test/generated/V7Candidate.t.sol') != '' }}
+      - name: Execute real Balancer flash loan on Base fork
+        if: ${{ hashFiles('test/generated/V7Candidate.t.sol') != '' }}
+        env:
+          BASE_RPC_URL: https://mainnet.base.org
+        run: |
+          set +e
+          forge test --match-contract V7GeneratedForkTest -vvv > artifacts/v7_fork.log 2>&1
+          code=$?
+          python - "$code" <<'PY'
+          import json,sys
+          from pathlib import Path
+          code=int(sys.argv[1]);Path('artifacts/v7_fork_result.json').write_text(json.dumps({'attempted':True,'fork_executable':code==0,'forge_exit_code':code},indent=2))
+          PY
+          cat artifacts/v7_fork.log
+          exit $code
       - uses: actions/upload-artifact@v4
         if: always()
         with:
