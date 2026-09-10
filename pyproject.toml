@@ -1,0 +1,13 @@
+[build-system]
+requires=["setuptools>=70"]
+build-backend="setuptools.build_meta"
+
+[project]
+name="synergy-graph-print-money"
+version="0.7.0"
+description="SAG V7 live Base liquidity multigraph research engine"
+requires-python=">=3.11"
+dependencies=["requests>=2.32,<3"]
+
+[tool.setuptools.packages.find]
+where=["src"]

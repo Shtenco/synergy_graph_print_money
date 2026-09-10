@@ -1,0 +1,8 @@
+version,scenario,snapshots,final_hardnav_usd,hardnav_per_rubc_usd,note
+V3,3-hop foreign graph sigma=25bps,10000,10029.41,0.709920,synthetic reference
+V3,3-hop foreign graph sigma=50bps,10000,10847.91,0.821453,synthetic reference
+V4,full K12 sigma=50bps,10000,55277.6334,0.710264,synthetic reference
+V5,atomic LP 20k sigma=50bps,10000,110452.1766,0.765808,synthetic; self-LP conversion interpretation corrected in V6
+V5,atomic LP 50k sigma=50bps,10000,124249.6764,0.857605,synthetic; self-LP conversion interpretation corrected in V6
+V6,strict closed foreign cycles sigma=5bps,3000,111.34,,starts with $100; synthetic reference
+V6,strict closed foreign cycles sigma=10bps,10000,13128.91,,starts with $100; 35% competition/MEV haircut; synthetic reference
