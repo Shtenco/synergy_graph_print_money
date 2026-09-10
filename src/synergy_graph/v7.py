@@ -42,25 +42,27 @@ def _addr(v:str|None)->str:
     if not v:return ""
     return v.split("_",1)[-1] if "_" in v else v
 
-def fetch_top_pools(pages:int=12,max_pools:int=240,sleep_s:float=6.5,retries:int=6)->list[Pool]:
+def fetch_top_pools(pages:int=12,max_pools:int=240,sleep_s:float=15.0,retries:int=10)->list[Pool]:
     pools=[];s=requests.Session();s.headers.update({"accept":"application/json;version=20230203","user-agent":"synergy-graph-v7/0.7"})
     for page in range(1,pages+1):
-        r=None
-        for attempt in range(retries):
+        payload=None
+        for attempt in range(1,retries+1):
             r=s.get(f"{GECKO}/networks/base/pools",params={"page":page,"include":"base_token,quote_token,dex"},timeout=30)
-            if r.status_code!=429:break
-            retry_after=r.headers.get("Retry-After")
-            try:wait=float(retry_after) if retry_after else max(sleep_s,2.0**attempt)
-            except ValueError:wait=max(sleep_s,2.0**attempt)
-            time.sleep(min(wait,60.0))
-        if r is None:raise RuntimeError("GeckoTerminal request was not issued")
-        r.raise_for_status();payload=r.json();included={x.get("id",""):x for x in payload.get("included",[])}
+            if r.status_code==429:
+                retry_after=r.headers.get("Retry-After")
+                try:wait=max(60.0,float(retry_after)) if retry_after else 60.0
+                except ValueError:wait=60.0
+                print(f"GeckoTerminal 429 page={page} attempt={attempt}; cooling down {wait:.0f}s",flush=True)
+                time.sleep(min(wait,90.0));continue
+            r.raise_for_status();payload=r.json();break
+        if payload is None:raise RuntimeError(f"GeckoTerminal page {page} remained rate-limited after {retries} attempts")
+        included={x.get("id",""):x for x in payload.get("included",[])}
         for item in payload.get("data",[]):
             a=item.get("attributes",{});rel=item.get("relationships",{});b_id=(((rel.get("base_token") or {}).get("data") or {}).get("id"));q_id=(((rel.get("quote_token") or {}).get("data") or {}).get("id"));d_id=(((rel.get("dex") or {}).get("data") or {}).get("id")) or "";bi=included.get(b_id or "",{}).get("attributes",{});qi=included.get(q_id or "",{}).get("attributes",{})
             p=Pool((a.get("address") or _addr(item.get("id"))).lower(),d_id,a.get("name") or "",_addr(b_id).lower(),_addr(q_id).lower(),bi.get("symbol") or "",qi.get("symbol") or "",_num(a.get("reserve_in_usd")),_num(a.get("base_token_price_usd")),_num(a.get("quote_token_price_usd")),_num(a.get("pool_fee_percentage")))
             if p.address and p.token0 and p.token1:pools.append(p)
             if len(pools)>=max_pools:return pools
-        if sleep_s:time.sleep(sleep_s)
+        if sleep_s and page<pages:time.sleep(sleep_s)
     return pools[:max_pools]
 
 def pad_address(addr:str)->str:return addr.lower().replace("0x","").rjust(64,"0")
@@ -147,5 +149,5 @@ def run(args):
     (out/"v7_report.json").write_text(json.dumps(report,indent=2),encoding="utf-8");return report
 
 def cli():
-    p=argparse.ArgumentParser();p.add_argument("--pages",type=int,default=12);p.add_argument("--max-pools",type=int,default=240);p.add_argument("--max-hops",type=int,default=4);p.add_argument("--top-candidates",type=int,default=200);p.add_argument("--rpc-probe-pools",type=int,default=80);p.add_argument("--vault-token-checks",type=int,default=30);p.add_argument("--sleep",type=float,default=6.5);p.add_argument("--out",default="artifacts");args=p.parse_args();print(json.dumps(run(args),indent=2))
+    p=argparse.ArgumentParser();p.add_argument("--pages",type=int,default=12);p.add_argument("--max-pools",type=int,default=240);p.add_argument("--max-hops",type=int,default=4);p.add_argument("--top-candidates",type=int,default=200);p.add_argument("--rpc-probe-pools",type=int,default=80);p.add_argument("--vault-token-checks",type=int,default=30);p.add_argument("--sleep",type=float,default=15.0);p.add_argument("--out",default="artifacts");args=p.parse_args();print(json.dumps(run(args),indent=2))
 if __name__=="__main__":cli()
