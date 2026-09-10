@@ -1,0 +1,8 @@
+Scenario,Executed cycles,Final HardNAV,Final RUBC supply,HardNAV/RUBC,Cumulative abundance surplus,Gross transfer from foreign LPs,Gas+MEV costs
+"3-hop graph, σ=0 bps",0,10000.0,14285.71,0.7,0.0,0.0,0.0
+"3-hop graph, σ=10 bps",0,10000.0,14285.71,0.7,0.0,0.0,0.0
+"3-hop graph, σ=25 bps",2607,10029.41,14127.52,0.70992,140.93,162.99,133.57
+"3-hop graph, σ=50 bps",9346,10847.91,13205.76,0.821453,1664.66,1346.69,498.78
+"1 external edge, σ=25 bps",0,10000.0,14285.71,0.7,0.0,0.0,0.0
+"1 external edge, σ=50 bps",5954,10094.99,13957.46,0.723268,328.52,349.55,254.56
+"3-hop, σ=25 bps, internal fee 30 bps",1906,10021.33,14244.19,0.703538,50.47,112.04,90.7

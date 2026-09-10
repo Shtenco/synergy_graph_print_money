@@ -1,0 +1,7 @@
+Scenario,"Residual sigma, bps",Snapshots,Executed cycles,"Final HardNAV, USD","HardNAV return, %",HardNAV/RUBC,"Cumulative abundance surplus, USD","Gross transfer from foreign LPs, USD"
+V4 full K12,10,3000,0,55000.0,0.0,0.7,0.0,0.0
+V4 full K12,25,3000,3,55000.0525,9.5e-05,0.700002,0.1726,0.1844
+V4 full K12,50,3000,2365,55081.1419,0.147531,0.70316,247.8776,172.2246
+V4 full K12,100,3000,2956,56057.4082,1.92256,0.726628,2072.3774,1245.9356
+V4 full K12 — 10k run,50,10000,7793,55277.6334,0.504788,0.710264,802.6039,582.0156
+V4 full K12 — own fee 30 bps stress,50,3000,2371,55085.6728,0.155769,0.701935,151.9316,171.9492
