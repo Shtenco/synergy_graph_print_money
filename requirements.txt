@@ -2,3 +2,4 @@ requests>=2.32,<3
 pytest>=8,<10
 eth-abi>=5,<6
 eth-utils>=5,<6
+eth-hash[pycryptodome]>=0.8,<1
