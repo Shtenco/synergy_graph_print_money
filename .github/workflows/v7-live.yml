@@ -20,6 +20,10 @@ jobs:
         env:
           BASE_RPC_URL: https://mainnet.base.org
         run: python scripts/run_v7.py --pages 10 --max-pools 240 --augment-dexes 5 --augment-pages 2 --max-hops 4 --rpc-probe-pools 60 --vault-token-checks 20 --sleep 15 --out artifacts
+      - name: Exact Aerodrome V2 eth_call quote verification
+        env:
+          BASE_RPC_URL: https://mainnet.base.org
+        run: python scripts/quote_v7.py --artifacts artifacts --max-candidates 60 --max-flash-usd 50000 --mev-guard-bps 5 --gas-reserve-usd 0.05
       - uses: actions/upload-artifact@v4
         if: always()
         with:
