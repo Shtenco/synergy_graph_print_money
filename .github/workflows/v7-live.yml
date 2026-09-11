@@ -23,14 +23,16 @@ jobs:
         run: pytest -q
       - name: Live Base top-240 discovery at a pinned block
         run: >-
-          python scripts/run_v7.py
+          python scripts/run_v7_live.py
           --pages 12
           --max-pools 240
           --max-hops 5
           --top-candidates 500
           --rpc-probe-pools 30
           --vault-token-checks 20
-          --sleep 6.2
+          --sleep 8
+          --max-retries 10
+          --rpc-url "$BASE_RPC_URL"
           --out artifacts
       - name: Exact eth_call validation and flash sizing
         shell: bash
