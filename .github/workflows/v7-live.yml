@@ -21,7 +21,7 @@ jobs:
         run: pip install -e . pytest
       - name: Unit and conservation gates
         run: pytest -q
-      - name: Live Base 240-pool hybrid discovery at a pinned block
+      - name: Live Base hybrid discovery and quoteable frontier at one pinned block
         run: >-
           python scripts/run_v7_hybrid.py
           --pages 12
@@ -29,22 +29,22 @@ jobs:
           --max-hops 5
           --top-candidates 500
           --max-expansions 300000
-          --factory-scan 800
+          --factory-scan 3000
           --rpc-probe-pools 30
           --vault-token-checks 20
           --sleep 8
           --max-retries 10
           --rpc-url "$BASE_RPC_URL"
           --out artifacts
-      - name: Exact eth_call validation and flash sizing
+      - name: V7.1 exact eth_call validation and flash sizing
         shell: bash
         run: |
           BLOCK=$(python -c "import json; print(json.load(open('artifacts/v7_report.json'))['block_number'])")
-          python scripts/run_v7_exact.py \
+          python scripts/run_v7_exact_v2.py \
             --pools artifacts/v7_pools.csv \
-            --candidates artifacts/v7_candidates.csv \
+            --candidates artifacts/v7_candidates_quoteable.csv \
             --block "$BLOCK" \
-            --max-candidates 120 \
+            --max-candidates 200 \
             --max-flash-usd 50000 \
             --flash-fee-bps 0 \
             --mev-haircut 0.35 \
