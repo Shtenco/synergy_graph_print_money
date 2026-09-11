@@ -21,13 +21,15 @@ jobs:
         run: pip install -e . pytest
       - name: Unit and conservation gates
         run: pytest -q
-      - name: Live Base top-240 discovery at a pinned block
+      - name: Live Base 240-pool hybrid discovery at a pinned block
         run: >-
-          python scripts/run_v7_live.py
+          python scripts/run_v7_hybrid.py
           --pages 12
           --max-pools 240
           --max-hops 5
           --top-candidates 500
+          --max-expansions 300000
+          --factory-scan 800
           --rpc-probe-pools 30
           --vault-token-checks 20
           --sleep 8
