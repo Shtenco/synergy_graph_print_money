@@ -8,7 +8,10 @@ on:
       - "contracts/V7_4GlobalPacketExecutor.sol"
       - "test/V7_4Run36Packet.t.sol"
       - "src/synergy_graph/v7_4_token_flow.py"
+      - "src/synergy_graph/v7_4_uniswap_v4.py"
+      - "scripts/run_v7_4_v4_exact.py"
       - "tests/test_v7_4_token_flow.py"
+      - "tests/test_v7_4_uniswap_v4.py"
       - ".github/workflows/v7-4-run36-fork.yml"
 
 jobs:
@@ -24,8 +27,13 @@ jobs:
           python-version: "3.12"
       - name: Install Python package and tests
         run: pip install -e . pytest
-      - name: V7.4 token conservation regression gates
-        run: pytest -q tests/test_v7_4_token_flow.py tests/test_v7_2_global.py tests/test_v7_flash_fee.py
+      - name: V7.4 conservation and protocol-adapter regression gates
+        run: >-
+          pytest -q
+          tests/test_v7_4_token_flow.py
+          tests/test_v7_4_uniswap_v4.py
+          tests/test_v7_2_global.py
+          tests/test_v7_flash_fee.py
       - uses: foundry-rs/foundry-toolchain@v1
         with:
           version: stable
