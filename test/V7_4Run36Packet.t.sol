@@ -8,15 +8,55 @@ interface VmV74 {
     function createSelectFork(string calldata urlOrAlias,uint256 blockNumber) external returns (uint256 forkId);
 }
 
+interface IAggregatorV3V74 {
+    function decimals() external view returns (uint8);
+    function latestRoundData() external view returns (
+        uint80 roundId,
+        int256 answer,
+        uint256 startedAt,
+        uint256 updatedAt,
+        uint80 answeredInRound
+    );
+}
+
+/// @notice Exact same-block proof for the strict token-closed packet discovered
+///         from Base run #36.  This test deliberately does NOT rely on a USD
+///         netting shortcut: Balancer repayment is enforced in-kind by the
+///         executor before any HardNAV aggregation occurs here.
 contract V7_4Run36PacketTest {
     VmV74 constant vm=VmV74(address(uint160(uint256(keccak256("hevm cheat code")))));
+
+    address constant BALANCER_V2_VAULT=0xBA12222222228d8Ba445958a75a0704d566BF2C8;
     address constant WETH=0x4200000000000000000000000000000000000006;
     address constant USDC=0x833589fCD6EDb6E08f4c7C32D4f71b54bDa02913;
     address constant VIRTUAL=0x0b3e328455c4059eEb9E3f84B5543F74E24e7E1b;
     address constant USDT=0xfDE4C96c8593536E31F229EA8f37b2ADa2699bb2;
     address constant EURC=0x60a3E35cC302bFa44CB288Bc5a4F316Fdb1ADB42;
+
+    // Chainlink Standard ETH/USD proxy on Base.  Reading the proxy on the
+    // pinned fork keeps the USD conversion in the same chain state as swaps.
+    address constant ETH_USD_FEED=0x71041dddad3595F9CEd3DcCFBe3D1F4b0a16Bb70;
+
     uint256 constant PINNED_BLOCK=51_148_993;
-    uint256 constant WETH_USD_E6=2_450_430_000;
+    uint256 constant STARTING_PERSONAL_HARDNAV_USD6=100_000_000; // $100
+    uint256 constant KEEP_AFTER_COMPETITION_BPS=6_500;           // 35% reserve
+    uint256 constant BPS=10_000;
+    uint256 constant FIXED_L1_DATA_AND_MISC_BUFFER_USD6=1_000_000; // extra $1
+
+    function _ethUsdE8() internal view returns(uint256) {
+        (,int256 answer,,uint256 updatedAt,)=IAggregatorV3V74(ETH_USD_FEED).latestRoundData();
+        require(answer>0 && updatedAt>0,"bad ETH/USD oracle");
+        uint8 d=IAggregatorV3V74(ETH_USD_FEED).decimals();
+        uint256 p=uint256(answer);
+        if(d==8) return p;
+        if(d<8) return p*(10**(8-d));
+        return p/(10**(d-8));
+    }
+
+    function _wethUsd6(uint256 amountWei,uint256 ethUsdE8) internal pure returns(uint256) {
+        // amountWei / 1e18 * ethUsdE8 / 1e8 * 1e6
+        return amountWei*ethUsdE8/1e20;
+    }
 
     function testRun36StrictTokenClosedPacket() public {
         vm.createSelectFork(vm.envString("BASE_RPC_URL"),PINNED_BLOCK);
@@ -25,10 +65,16 @@ contract V7_4Run36PacketTest {
         address[] memory flashTokens=new address[](2);
         uint256[] memory flashAmounts=new uint256[](2);
         uint256[] memory minProfit=new uint256[](2);
+        // Strictly sorted by address, as required by the executor.
         flashTokens[0]=WETH; flashTokens[1]=USDC;
-        flashAmounts[0]=635250969890810496; // ~$1,556.64
-        flashAmounts[1]=613997129;          // ~$615.29
+        flashAmounts[0]=635250969890810496; // ~0.635251 WETH ~= $1,556.64 in the run-36 model
+        flashAmounts[1]=613997129;          // 613.997129 USDC
         minProfit[0]=1; minProfit[1]=1;
+
+        // Prove that the selected in-kind principals actually exist in the
+        // Balancer Vault at the same pinned state used by the swap packet.
+        require(IERC20V74(WETH).balanceOf(BALANCER_V2_VAULT)>=flashAmounts[0],"insufficient Balancer WETH");
+        require(IERC20V74(USDC).balanceOf(BALANCER_V2_VAULT)>=flashAmounts[1],"insufficient Balancer USDC");
 
         V7_4GlobalPacketExecutor.Cycle[] memory cycles=new V7_4GlobalPacketExecutor.Cycle[](6);
 
@@ -66,10 +112,32 @@ contract V7_4Run36PacketTest {
 
         uint256 beforeWeth=IERC20V74(WETH).balanceOf(address(ex));
         uint256 beforeUsdc=IERC20V74(USDC).balanceOf(address(ex));
+        uint256 gasBefore=gasleft();
+
+        // startPacket cannot return unless Balancer has already received every
+        // flash principal plus the actual feeAmounts[] supplied by the Vault.
         ex.startPacket(flashTokens,flashAmounts,cycles,minProfit);
-        uint256 wethProfit=IERC20V74(WETH).balanceOf(address(ex))-beforeWeth;
-        uint256 usdcProfit=IERC20V74(USDC).balanceOf(address(ex))-beforeUsdc;
-        uint256 deltaHardNavUsd6=usdcProfit+wethProfit*WETH_USD_E6/1e18;
-        require(deltaHardNavUsd6>0,"V7.4 consolidated HardNAV did not increase");
+
+        uint256 executionGasUsed=gasBefore-gasleft();
+        uint256 afterWeth=IERC20V74(WETH).balanceOf(address(ex));
+        uint256 afterUsdc=IERC20V74(USDC).balanceOf(address(ex));
+        require(afterWeth>beforeWeth,"no post-repayment WETH profit");
+        require(afterUsdc>beforeUsdc,"no post-repayment USDC profit");
+
+        uint256 wethProfit=afterWeth-beforeWeth;
+        uint256 usdcProfit=afterUsdc-beforeUsdc;
+        uint256 ethUsdE8=_ethUsdE8();
+
+        // USDC is the HardNAV numeraire here (1 raw USDC = 1 USD6 unit).
+        uint256 rawProfitUsd6=usdcProfit+_wethUsd6(wethProfit,ethUsdE8);
+        uint256 riskAdjustedProfitUsd6=rawProfitUsd6*KEEP_AFTER_COMPETITION_BPS/BPS;
+        uint256 executionGasUsd6=executionGasUsed*block.basefee*ethUsdE8/1e20;
+        uint256 externalCostReserveUsd6=executionGasUsd6+FIXED_L1_DATA_AND_MISC_BUFFER_USD6;
+
+        require(riskAdjustedProfitUsd6>externalCostReserveUsd6,"profit does not survive risk+gas reserve");
+        uint256 netHardNavGainUsd6=riskAdjustedProfitUsd6-externalCostReserveUsd6;
+        uint256 hardNavAfterUsd6=STARTING_PERSONAL_HARDNAV_USD6+netHardNavGainUsd6;
+
+        require(hardNavAfterUsd6>STARTING_PERSONAL_HARDNAV_USD6,"V7.4 consolidated HardNAV did not increase");
     }
 }
