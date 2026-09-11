@@ -9,7 +9,7 @@ on:
 jobs:
   test-snapshot-quote-fork:
     runs-on: ubuntu-22.04
-    timeout-minutes: 30
+    timeout-minutes: 35
     env:
       BASE_RPC_URL: https://base-rpc.publicnode.com
     steps:
@@ -46,6 +46,16 @@ jobs:
           --own-fee-bps 30
           --foreign-fee-fallback-bps 30
           --pulse-grid 0,0.005,0.01,0.02,0.05
+      - name: V7.4 recover and exact-quote Uniswap V4 PoolIds
+        shell: bash
+        run: |
+          BLOCK=$(python -c "import json; print(json.load(open('artifacts/v7_report.json'))['block_number'])")
+          python scripts/run_v7_4_v4_exact.py \
+            --pools artifacts/v7_pools.csv \
+            --block "$BLOCK" \
+            --rpc-url "$BASE_RPC_URL" \
+            --quote-usd 100 \
+            --out artifacts
       - name: V7.1 exact adapters for foreign legs of the global packet frontier
         shell: bash
         run: |
