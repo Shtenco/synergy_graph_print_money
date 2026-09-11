@@ -1,0 +1,35 @@
+name: V7.4 strict run36 fork proof
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "contracts/V7_4GlobalPacketExecutor.sol"
+      - "test/V7_4Run36Packet.t.sol"
+      - "src/synergy_graph/v7_4_token_flow.py"
+      - "tests/test_v7_4_token_flow.py"
+      - ".github/workflows/v7-4-run36-fork.yml"
+
+jobs:
+  strict-token-closed-packet:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 20
+    env:
+      BASE_RPC_URL: https://base-rpc.publicnode.com
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install Python package and tests
+        run: pip install -e . pytest
+      - name: V7.4 token conservation regression gates
+        run: pytest -q tests/test_v7_4_token_flow.py tests/test_v7_2_global.py tests/test_v7_flash_fee.py
+      - uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: stable
+      - name: Compile strict packet executor
+        run: forge build
+      - name: Execute six-cycle packet at Base block 51148993
+        run: forge test --match-contract V7_4Run36PacketTest -vvv
