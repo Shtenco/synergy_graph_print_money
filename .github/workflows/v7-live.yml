@@ -46,7 +46,6 @@ jobs:
             --block "$BLOCK" \
             --max-candidates 200 \
             --max-flash-usd 50000 \
-            --flash-fee-bps 0 \
             --mev-haircut 0.35 \
             --min-net-usd 0.01 \
             --out artifacts
