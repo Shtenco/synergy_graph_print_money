@@ -1,0 +1,25 @@
+{
+  "snapshot": "Base run #36",
+  "pinned_block": 51148993,
+  "supported_priced_foreign_pools": 109,
+  "rounds": 6,
+  "foreign_swaps": 14,
+  "gross_external_usd": 25.000736723622023,
+  "mev_competition_haircut_fraction": 0.35,
+  "modeled_swap_gas_usd": 0.28,
+  "net_after_35pct_and_gas_usd": 15.970478870354315,
+  "peak_single_cycle_flash_usd": 1556.6380341495387,
+  "reusable_flash_principal_by_asset_usd": {
+    "WETH": 1556.6380341495387,
+    "USDC": 615.2910042028888
+  },
+  "optimized_total_flash_draw_usd": 2171.9290383524276,
+  "sum_cycle_inputs_usd": 4765.278494481442,
+  "starting_personal_hardnav_usd": 100.0,
+  "final_hardnav_math_usd": 115.97047887035431,
+  "token_level_closed_each_cycle": true,
+  "flash_assets_used": ["WETH", "USDC"],
+  "fork_executable": false,
+  "fork_status": "PENDING: GitHub hosted runner has not started jobs; direct RPC unavailable in current compute environment",
+  "interpretation": "Strict CPMM-surrogate lower-bound candidate packet. Exact CLMM/V3/Aerodrome same-block fork execution remains required."
+}
