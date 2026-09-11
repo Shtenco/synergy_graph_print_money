@@ -6,7 +6,6 @@ import json
 import os
 from pathlib import Path
 
-from synergy_graph.v7 import ZERO if False else Pool  # type: ignore
 from synergy_graph.v7_exact import token_decimals
 from synergy_graph.v7_4_uniswap_v4 import quote_exact_input_single, recover_pool_key
 from synergy_graph.v7_rpc import ReliableRpc
