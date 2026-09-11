@@ -8,10 +8,9 @@ from pathlib import Path
 from run_v7_live import find_cycles_bounded
 from synergy_graph.v7 import BALANCER_V2_VAULT, balancer_balances, own_complete_graph_count, probe_pool, write_csv
 from synergy_graph.v7_exact_v2 import quoteable_pool_subset
+from synergy_graph.v7_nodes import canonical_external_tokens
 from synergy_graph.v7_rpc import ReliableRpc
 from synergy_graph.v7_sources import fetch_public_ranked, supplement_aerodrome_v2
-
-ZERO = "0x0000000000000000000000000000000000000000"
 
 
 def run(args):
@@ -20,7 +19,7 @@ def run(args):
     ranked,src=fetch_public_ranked(args.pages,args.max_pools,args.sleep,args.max_retries)
     pools,sup=supplement_aerodrome_v2(rpc,block,ranked,args.max_pools,args.factory_scan)
     write_csv(out/"v7_pools.csv",[asdict(p) for p in pools])
-    tokens=sorted(({p.token0 for p in pools}|{p.token1 for p in pools})-{ZERO})
+    tokens=canonical_external_tokens(pools)
 
     # Broad discovery remains protocol-agnostic and is useful as a research frontier.
     cands,exp,trunc=find_cycles_bounded(pools,args.max_hops,args.top_candidates,args.max_expansions)
@@ -38,16 +37,18 @@ def run(args):
         try: states.append(probe_pool(rpc,p,block))
         except Exception as e: states.append({"address":p.address,"dex_id":p.dex_id,"error":str(e)})
     write_csv(out/"v7_rpc_state.csv",states)
+    own_pools=own_complete_graph_count(len(tokens))
     report={
       "network":"base","chain_id":8453,"block_number":bn,
       "foreign_pools_discovered":len(pools),"public_ranked_pools":len(ranked),
       "public_pages_ok":src.public_pages_ok,"public_pagination_boundary":src.public_boundary,
       "aerodrome_factory_supplement":sup.factory_added,"aerodrome_factory_entries_scanned":sup.factory_scanned,
-      "unique_foreign_tokens":len(tokens),
+      "unique_foreign_tokens_canonical":len(tokens),
+      "native_eth_normalization":"address(0) -> WETH",
       "priced_foreign_pools_for_discovery":sum(p.token0_price_usd>0 and p.token1_price_usd>0 for p in pools),
       "quoteable_foreign_pools":len(quoteable_pools),
-      "own_complete_graph_pools_with_RUBC_RUBX":own_complete_graph_count(len(tokens)),
-      "total_physical_pools_conceptual":len(pools)+own_complete_graph_count(len(tokens)),
+      "own_complete_graph_pools_with_RUBC_RUBX":own_pools,
+      "total_physical_pools_conceptual":len(pools)+own_pools,
       "discovery_candidates":len(cands),"cycle_search_expansions":exp,"cycle_search_truncated":trunc,
       "quoteable_discovery_candidates":len(qcands),"quoteable_cycle_search_expansions":qexp,"quoteable_cycle_search_truncated":qtrunc,
       "rpc_pools_probed":len(states),"rpc_contracts_with_code":sum(bool(x.get("has_code")) for x in states),
@@ -58,7 +59,7 @@ def run(args):
       "balancer_v2_vault_has_code":bool(rpc.code(BALANCER_V2_VAULT,block) not in ("","0x")),
       "balancer_token_balance_checks":balancer_balances(rpc,tokens[:args.vault_token_checks],block),
       "rpc_metrics":rpc.metrics(),
-      "note":"Broad DISCOVERED is research-only. v7_candidates_quoteable.csv contains only source families with exact V7.1 adapters; neither set is executable PnL until quote/fork gates pass."
+      "note":"Broad DISCOVERED is research-only. address(0) native ETH is canonicalized to WETH for node/K_n accounting. v7_candidates_quoteable.csv contains only source families with exact V7.1 adapters; neither set is executable PnL until quote/fork gates pass."
     }
     (out/"v7_report.json").write_text(json.dumps(report,indent=2),encoding="utf-8")
     print(json.dumps(report,indent=2))
