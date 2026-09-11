@@ -1,0 +1,5 @@
+Mode,Residual sigma (bps),Snapshots,Executed,Gross transfer from foreign LPs (USD),Net profit after modelled MEV+gas (USD),Final protocol HardNAV from $100 (USD),Mean flash principal actually deployed (USD),Mean foreign hops across up to 2 cycles,Balancer flash fee assumed (bps)
+Closed foreign cycles,5,3000,17,76.89,11.34,111.34,4411.76,3.41,0.0
+Closed foreign cycles,10,10000,4720,40391.55,13028.91,13128.91,3420.87,5.58,0.0
+Closed foreign cycles — upper stress,25,3000,3000,193692.41,111374.22,111474.22,8285.67,10.66,0.0
+Closed foreign cycles — upper stress,50,3000,3000,917886.19,582013.86,582113.86,17424.5,10.97,0.0

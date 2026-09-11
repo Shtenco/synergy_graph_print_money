@@ -5,22 +5,67 @@ on:
   pull_request:
     branches: [main]
   workflow_dispatch:
+
 jobs:
-  test-and-snapshot:
+  test-snapshot-quote-fork:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 30
+    env:
+      BASE_RPC_URL: https://mainnet.base.org
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - run: pip install -e . pytest
-      - run: pytest -q
-      - name: Live Base discovery + pinned RPC probes
-        env:
-          BASE_RPC_URL: https://mainnet.base.org
-        run: python scripts/run_v7.py --pages 12 --max-pools 240 --max-hops 4 --rpc-probe-pools 60 --vault-token-checks 20 --out artifacts
-      - uses: actions/upload-artifact@v4
+      - name: Install Python engine
+        run: pip install -e . pytest
+      - name: Unit and conservation gates
+        run: pytest -q
+      - name: Live Base top-240 discovery at a pinned block
+        run: >-
+          python scripts/run_v7.py
+          --pages 12
+          --max-pools 240
+          --max-hops 5
+          --top-candidates 500
+          --rpc-probe-pools 30
+          --vault-token-checks 20
+          --sleep 6.2
+          --out artifacts
+      - name: Exact eth_call validation and flash sizing
+        shell: bash
+        run: |
+          BLOCK=$(python -c "import json; print(json.load(open('artifacts/v7_report.json'))['block_number'])")
+          python scripts/run_v7_exact.py \
+            --pools artifacts/v7_pools.csv \
+            --candidates artifacts/v7_candidates.csv \
+            --block "$BLOCK" \
+            --max-candidates 120 \
+            --max-flash-usd 50000 \
+            --flash-fee-bps 0 \
+            --mev-haircut 0.35 \
+            --min-net-usd 0.01 \
+            --out artifacts
+      - uses: foundry-rs/foundry-toolchain@v1
         with:
-          name: sag-v7-live-snapshot
+          version: stable
+      - name: Pinned Base fork execution gate
+        shell: bash
+        run: |
+          if grep -q "contract V7GeneratedForkTest" artifacts/V7GeneratedFork.t.sol; then
+            cp artifacts/V7GeneratedFork.t.sol test/V7GeneratedFork.t.sol
+            set +e
+            forge test --match-contract V7GeneratedForkTest -vvv
+            RC=$?
+            set -e
+            python -c "import json,sys; rc=int(sys.argv[1]); json.dump({'fork_candidate_generated': True, 'fork_executable': rc == 0, 'forge_exit_code': rc}, open('artifacts/v7_fork_result.json','w'), indent=2)" "$RC"
+            exit "$RC"
+          else
+            echo '{"fork_candidate_generated": false, "fork_executable": false, "reason": "no positive forkable quote candidate at pinned block"}' > artifacts/v7_fork_result.json
+          fi
+      - name: Upload complete V7 evidence pack
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sag-v7-live-evidence
           path: artifacts/
