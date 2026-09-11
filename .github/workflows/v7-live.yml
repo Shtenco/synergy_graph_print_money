@@ -36,7 +36,17 @@ jobs:
           --max-retries 10
           --rpc-url "$BASE_RPC_URL"
           --out artifacts
-      - name: V7.1 exact eth_call validation and flash sizing
+      - name: V7.2 huge-graph QE edge-field preflight
+        run: >-
+          python scripts/run_v7_2_global_preflight.py
+          --pools artifacts/v7_pools.csv
+          --out artifacts/v7_2_global_preflight.json
+          --own-tvl-usd-per-pool 10000
+          --rubc-reference-usd 1
+          --own-fee-bps 30
+          --foreign-fee-fallback-bps 30
+          --pulse-grid 0,0.005,0.01,0.02,0.05
+      - name: V7.1 exact adapters for foreign legs of the global packet frontier
         shell: bash
         run: |
           BLOCK=$(python -c "import json; print(json.load(open('artifacts/v7_report.json'))['block_number'])")
