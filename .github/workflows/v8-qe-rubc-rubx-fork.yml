@@ -1,0 +1,27 @@
+name: V8 RUBC RUBX QE fork proof
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [v8-profit-engine]
+    paths:
+      - "test/V8_QE_RUBC_RUBX_Fork.t.sol"
+      - ".github/workflows/v8-qe-rubc-rubx-fork.yml"
+
+jobs:
+  qe-created-cycle-fork:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 25
+    env:
+      BASE_RPC_URL: https://base-rpc.publicnode.com
+    steps:
+      - uses: actions/checkout@v4
+      - uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: stable
+      - name: Compile V8 QE fork laboratory
+        run: forge build
+      - name: Prove QE-only cannot create consolidated HardNAV
+        run: forge test --match-test testQEAloneDoesNotPrintHardNAV -vvv
+      - name: Prove RUBC/RUBX QE creates a new positive graph cycle
+        run: forge test --match-test testRubcRubxQECreatesCycleAndCapturesForeignHardValue -vvvv
