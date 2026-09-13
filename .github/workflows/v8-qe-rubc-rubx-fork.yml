@@ -5,7 +5,10 @@ on:
   push:
     branches: [v8-profit-engine]
     paths:
+      - "contracts/V8SynergyGraphMoney.sol"
+      - "test/V8SynergyGraphMoney.t.sol"
       - "test/V8_QE_RUBC_RUBX_Fork.t.sol"
+      - "docs/V8_SINGLE_CONTRACT_FLASH_GRAPH.md"
       - ".github/workflows/v8-qe-rubc-rubx-fork.yml"
 
 jobs:
@@ -19,9 +22,13 @@ jobs:
       - uses: foundry-rs/foundry-toolchain@v1
         with:
           version: stable
-      - name: Compile V8 QE fork laboratory
+      - name: Compile V8 contracts
         run: forge build
-      - name: Prove QE-only cannot create consolidated HardNAV
+      - name: Unit proof - QE alone cannot manufacture HardNAV
+        run: forge test --match-test testQEAloneCannotCreateHardProfit -vvv
+      - name: Unit proof - single-contract flash sparse graph and strict denomination closure
+        run: forge test --match-test testSingleContractFlashSparseGraphQEAndStrictClosure -vvvv
+      - name: Fork control - QE-only cannot create consolidated HardNAV
         run: forge test --match-test testQEAloneDoesNotPrintHardNAV -vvv
-      - name: Prove RUBC/RUBX QE creates a new positive graph cycle
+      - name: Fork proof - RUBC/RUBX QE creates a new positive graph cycle
         run: forge test --match-test testRubcRubxQECreatesCycleAndCapturesForeignHardValue -vvvv
