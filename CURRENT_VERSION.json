@@ -1,0 +1,20 @@
+{
+  "project": "SYNERGY Graph Print Money",
+  "primary_version": "V7.4",
+  "primary_branch": "main",
+  "status": "TOKEN_CLOSED_SURROGATE_CANDIDATE",
+  "pinned_base_block": 51148993,
+  "canonical_executor": "contracts/V7_4GlobalPacketExecutor.sol",
+  "canonical_fork_test": "test/V7_4Run36Packet.t.sol",
+  "canonical_packet": "data/results/v7_4_stateful_token_closed_packet.csv",
+  "candidate_gross_external_usd": 25.000736723622023,
+  "candidate_net_hardnav_usd": 15.970478870354315,
+  "candidate_concurrent_flash_draw_usd": 2171.9290383524276,
+  "fork_executable": false,
+  "promotion_rule": "Exact pinned Base fork must repay every flash ERC20 principal plus actual fee in-kind and leave positive consolidated HardNAV after external costs.",
+  "experimental_branches": [
+    "v8-profit-engine",
+    "v8-single-contract-flash-proof"
+  ],
+  "experimental_policy": "V8+ is research-only until it strictly beats V7.4 under the same token-closure and exact-fork evidence ladder."
+}
