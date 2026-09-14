@@ -1,8 +1,37 @@
 # SYNERGY Graph Print Money — Economic OS / SAG V7.4
 
+> **PRIMARY / CANONICAL VERSION: V7.4**  
+> `main` is the canonical branch. V8/V8.1/V8.2 remain research-only experiments until they beat V7.4 under the same strict token-closure and exact-fork gates.
+
 Экспериментальная исследовательская система для построения единого мультиграфа ликвидности Base Mainnet вокруг двух протокольных денежных узлов `RUBC` и `RUBX`.
 
 Главная идея проекта — не считать печать собственных токенов или перемещение активов между собственными LP прибылью. Единственная бухгалтерская истина — **консолидированный HardNAV** во внешних активах после возврата flash-loan, gas, MEV/competition haircut и всех обязательств.
+
+## Канонический статус V7.4
+
+Основная версия проекта — **V7.4**. Её текущий strongest surviving result на Base run #36:
+
+- **6 sequential token-closed cycles**;
+- **14 foreign swaps**;
+- gross external hard-value transfer: **$25.0007367**;
+- 35% competition/MEV reserve: **$8.7502579**;
+- modelled foreign swap gas: **$0.28**;
+- strict candidate `DeltaHardNAV`: **+$15.9704789**;
+- reusable flash principal: **$1,556.64 WETH-equivalent + $615.29 USDC-equivalent = $2,171.93** total concurrent draw;
+- token closure: **true in the strict surrogate model**;
+- exact pinned-block fork: **still pending**.
+
+Machine-readable status lives in `CURRENT_VERSION.json`.
+
+Promotion rule:
+
+```text
+FORK_EXECUTABLE
+AND every borrowed ERC20 repaid principal + actual fee in-kind
+AND consolidated post-cost HardNAV > 0
+```
+
+Until that exact gate passes, V7.4 is a **TOKEN_CLOSED_SURROGATE_CANDIDATE**, not a claim of live profit.
 
 ## Текущая архитектура
 
@@ -88,7 +117,7 @@ This result is still **surrogate / candidate**, not fork evidence. `contracts/V7
 - Собственный LP: `DeltaH_router + DeltaH_ownLP = 0` для self-swap, если нет внешнего контрагента.
 - Own-only QE/BUY/ADDLP/REMOVELP can change graph prices and inventory location, but cannot create aggregate hard-token inventory.
 - Арбитраж чужого LP: `DeltaHardNAV_SYNERGY(gross) = -Σ DeltaV_foreignLP` before external costs, subject to token-level closure.
-- Аккретивная постоянная эмиссия: `DeltaH >= h_t * DeltaS`, где `h_t = H_t / S_t`.
+- Аккретивная постоянная эмиссия: `DeltaH >= h_t * DeltaS`, где `h_t = H_t/S_t`.
 - Abundance Surplus: `AS = DeltaH - h_t DeltaS`.
 
 ## QE: atomic vs external-absorption regime
@@ -105,6 +134,7 @@ For the V7.4 surrogate packet, optimized draw is about `$2,171.93`; its model br
 
 ## Структура
 
+- `CURRENT_VERSION.json` — canonical version/status marker;
 - `docs/ECONOMIC_OS.md` — V1–V6 economic model and boundaries;
 - `docs/V7_2_GLOBAL_GRAPH_ACTUATOR.md` — huge-graph QE actuator;
 - `docs/V7_2_QE_CURL_MATH.md` — QE field / cycle curl math;
@@ -113,11 +143,15 @@ For the V7.4 surrogate packet, optimized draw is about `$2,171.93`; its model br
 - `src/synergy_graph/v7.py` — discovery/RPC/graph engine;
 - `src/synergy_graph/v7_4_token_flow.py` — ERC20-level repayment accounting helpers;
 - `contracts/V7ForeignCycleExecutor.sol` — single-cycle research executor;
-- `contracts/V7_4GlobalPacketExecutor.sol` — multi-token/multi-cycle Balancer packet executor;
-- `test/V7_4Run36Packet.t.sol` — pinned Base run-36 fork gate;
+- `contracts/V7_4GlobalPacketExecutor.sol` — **canonical multi-token/multi-cycle executor**;
+- `test/V7_4Run36Packet.t.sol` — **canonical pinned Base fork gate**;
 - `data/results/v7_4_packet36_token_conservation.csv` — falsification of relaxed 36-leg packet;
-- `data/results/v7_4_stateful_token_closed_packet.csv` — strict 6-cycle candidate packet;
+- `data/results/v7_4_stateful_token_closed_packet.csv` — **canonical strict 6-cycle candidate packet**;
 - `.github/workflows/v7-live.yml` — broad live graph pipeline;
-- `.github/workflows/v7-4-run36-fork.yml` — isolated strict fork proof.
+- `.github/workflows/v7-4-run36-fork.yml` — **primary strict fork proof workflow**.
+
+## Experimental policy
+
+V8/V8.1/V8.2 are preserved on research branches for ideas, accounting experiments and future improvements. They are **not** the main version and must not replace V7.4 unless they satisfy the same token-by-token closure rules and produce a strictly stronger exact-fork result.
 
 V7.4 is **research / simulation / fork-validation code**, not an audited production trading contract. The current GitHub hosted runner is failing before the first workflow step (`steps=null`), so the six-cycle candidate has **not** yet been promoted to `FORK_EXECUTABLE`. The decisive criterion remains exact same-block execution with actual token repayment, actual flash fee and positive post-repayment consolidated HardNAV.
