@@ -188,3 +188,40 @@ README должен показывать: проблему → архитект�
 Репозиторий не присваивает полномочия соседнего домена: AI ≠ authorization, UI ≠ ledger, blockchain commitment ≠ accounting truth, backtest ≠ realized external P&L.
 
 <!-- SYNERGY-FEDERATION-PASSPORT:END -->
+
+---
+
+# 💸 Глубокий доказательный паспорт Graph Print Money
+
+## Что реально сильного в `main`
+
+Этот repo уже один из наиболее зрелых monetary-falsification R&D узлов: V7.4 закреплён как current version, есть machine-readable `CURRENT_VERSION.json`, token-conservation CSV/JSON, Foundry executor и отдельные live/fork workflows.
+
+```mermaid
+flowchart LR
+    DISC[Pool discovery] --> GRAPH[Own + foreign multigraph]
+    GRAPH --> QE[RUBC/RUBX field search]
+    QE --> TOKEN[ERC20 token closure]
+    TOKEN --> FORK[Exact Foundry fork]
+    FORK --> NAV[Consolidated HardNAV]
+```
+
+## Ключевой отрицательный результат
+
+V7.4 обнаружил, что положительная суммарная USD-оценка не гарантирует возврат flash loan: token-specific deficits нельзя закрыть surplus другого ERC-20 простой консолидацией.
+
+Это важнее красивого PnL: проект уже умеет **опровергать собственные денежные конструкции**.
+
+## Canonical gate
+
+```text
+FORK_EXECUTABLE
++ every borrowed ERC20 repaid principal + actual fee in-kind
++ post-cost consolidated HardNAV > 0
+```
+
+До выполнения всех трёх условий результат остаётся candidate, даже если surrogate DeltaHardNAV положителен.
+
+## Следующий рубеж
+
+exact pinned-block run #36 → all-token repayment → actual gas/fees → repeat across independent historical blocks → adversarial MEV/competition → Financial OS accounting handoff.
