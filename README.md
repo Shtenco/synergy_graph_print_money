@@ -155,3 +155,36 @@ For the V7.4 surrogate packet, optimized draw is about `$2,171.93`; its model br
 V8/V8.1/V8.2 are preserved on research branches for ideas, accounting experiments and future improvements. They are **not** the main version and must not replace V7.4 unless they satisfy the same token-by-token closure rules and produce a strictly stronger exact-fork result.
 
 V7.4 is **research / simulation / fork-validation code**, not an audited production trading contract. The current GitHub hosted runner is failing before the first workflow step (`steps=null`), so the six-cycle candidate has **not** yet been promoted to `FORK_EXECUTABLE`. The decisive criterion remains exact same-block execution with actual token repayment, actual flash fee and positive post-repayment consolidated HardNAV.
+
+
+<!-- SYNERGY-FEDERATION-PASSPORT:START -->
+---
+
+## 🧭 SYNERGY federation passport
+
+**Домен:** 💸 Monetary graph / Economic OS  
+**Архитектурный родитель:** [`synergy_ai_blockchain`](https://github.com/Shtenco/synergy_ai_blockchain)  
+**Архитектурный корень:** [`synergy_system`](https://github.com/Shtenco/synergy_system)
+
+```mermaid
+flowchart LR
+    SYS[🧭 synergy_system] --> P[synergy_ai_blockchain]
+    P --> THIS[synergy_graph_print_money]
+    THIS --> E[📦 Evidence / outputs]
+```
+
+### Документационный контракт
+
+README должен показывать: проблему → архитектуру → реальные артефакты → проверку → ограничения → связи с федерацией. Сильные claims без evidence остаются R&D/CANDIDATE.
+
+### Навигация
+
+- [📚 Атлас всех 75 репозиториев](https://github.com/Shtenco/synergy_system/blob/main/docs/SYNERGY_REPOSITORY_ATLAS.md)
+- [🧾 Машиночитаемый registry](https://github.com/Shtenco/synergy_system/blob/main/registry/SYNERGY_REPOSITORIES.json)
+- [🧭 SYNERGY SYSTEM](https://github.com/Shtenco/synergy_system)
+
+### Authority rule
+
+Репозиторий не присваивает полномочия соседнего домена: AI ≠ authorization, UI ≠ ledger, blockchain commitment ≠ accounting truth, backtest ≠ realized external P&L.
+
+<!-- SYNERGY-FEDERATION-PASSPORT:END -->
