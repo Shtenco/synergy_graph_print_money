@@ -12,6 +12,7 @@ on:
       - "scripts/run_v7_4_v4_exact.py"
       - "tests/test_v7_4_token_flow.py"
       - "tests/test_v7_4_uniswap_v4.py"
+      - "tests/test_v7_4_triangle_mev.py"
       - ".github/workflows/v7-4-run36-fork.yml"
 
 jobs:
@@ -32,6 +33,7 @@ jobs:
           pytest -q
           tests/test_v7_4_token_flow.py
           tests/test_v7_4_uniswap_v4.py
+          tests/test_v7_4_triangle_mev.py
           tests/test_v7_2_global.py
           tests/test_v7_flash_fee.py
       - uses: foundry-rs/foundry-toolchain@v1
