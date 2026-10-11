@@ -79,8 +79,9 @@ def audit_triangle(legs: Sequence[TriangleLeg]) -> TriangleAudit:
         raise ValueError("all quotes must use the same pinned block")
     if any(leg.amount_in <= 0 or leg.amount_out <= 0 for leg in legs):
         raise ValueError("all input and output amounts must be positive")
-    for i, leg in enumerate(legs):
-        nxt = legs[(i + 1) % 3]
+    for i in range(2):
+        leg = legs[i]
+        nxt = legs[i + 1]
         if leg.token_out.lower() != nxt.token_in.lower():
             raise ValueError("token path is not continuous/closed")
         if leg.amount_out != nxt.amount_in:
