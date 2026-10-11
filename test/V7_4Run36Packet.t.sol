@@ -68,7 +68,7 @@ contract V7_4Run36PacketTest {
         // Strictly sorted by address, as required by the executor.
         flashTokens[0]=WETH; flashTokens[1]=USDC;
         flashAmounts[0]=635250969890810496; // ~0.635251 WETH ~= $1,556.64 in the run-36 model
-        flashAmounts[1]=613997129;          // 613.997129 USDC
+        flashAmounts[1]=615291004;          // 615.291004 USDC; matches canonical V7.4 packet
         minProfit[0]=1; minProfit[1]=1;
 
         // Prove that the selected in-kind principals actually exist in the
@@ -102,13 +102,13 @@ contract V7_4Run36PacketTest {
         s4[0]=V7_4GlobalPacketExecutor.Step(0xa41bc0affba7fd420d186b84899d7ab2ac57fcd1,USDC,USDT,1);
         s4[1]=V7_4GlobalPacketExecutor.Step(0x9785ef59e2b499fb741674ecf6faf912df7b3c1b,USDT,WETH,1);
         s4[2]=V7_4GlobalPacketExecutor.Step(0xd0b53d9277642d899df5c87a3966a349a798f224,WETH,USDC,1);
-        cycles[4]=V7_4GlobalPacketExecutor.Cycle(USDC,613997129,s4);
+        cycles[4]=V7_4GlobalPacketExecutor.Cycle(USDC,615291004,s4);
 
         V7_4GlobalPacketExecutor.Step[] memory s5=new V7_4GlobalPacketExecutor.Step[](3);
         s5[0]=V7_4GlobalPacketExecutor.Step(0xe846373c1a92b167b4e9cd5d8e4d6b1db9e90ec7,USDC,EURC,1);
         s5[1]=V7_4GlobalPacketExecutor.Step(0xaa5fe7dcc07dcb8b7afcd1b93874e7cb1e0ab50b,EURC,WETH,1);
         s5[2]=V7_4GlobalPacketExecutor.Step(0xd0b53d9277642d899df5c87a3966a349a798f224,WETH,USDC,1);
-        cycles[5]=V7_4GlobalPacketExecutor.Cycle(USDC,468677356,s5);
+        cycles[5]=V7_4GlobalPacketExecutor.Cycle(USDC,469664999,s5);
 
         uint256 beforeWeth=IERC20V74(WETH).balanceOf(address(ex));
         uint256 beforeUsdc=IERC20V74(USDC).balanceOf(address(ex));
