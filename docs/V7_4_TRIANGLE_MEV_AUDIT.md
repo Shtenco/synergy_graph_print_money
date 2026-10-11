@@ -21,25 +21,26 @@ $8.7502579, $0.28 modeled swap gas, and $15.9704789 estimated residual.
 The estimated reusable flash draw is $2,171.9290 ($1,556.6380 WETH-equivalent
 and $615.2910 USDC). This is not verified Base-mainnet profit.
 
-## Blocking inconsistency in the current exact test
-The canonical CSV/summary do not match the USDC amounts hard-coded in
-`test/V7_4Run36Packet.t.sol`:
+## Recovered packet inconsistency and branch fix
 
-| Item | Canonical CSV | Solidity fork test | Difference |
-|---|---:|---:|---:|
-| USDC cycle 1 input | $615.291004 | 613.997129 USDC | -$1.293875 |
-| USDC cycle 2 input | $469.664999 | 468.677356 USDC | -$0.987643 |
-| USDC reusable flash principal | $615.291004 | 613.997129 USDC | -$1.293875 |
+The `main` branch's original `test/V7_4Run36Packet.t.sol` had stale USDC
+amounts that did not match the canonical CSV/summary:
 
-The four WETH amounts match the CSV at the snapshot model price
-$2,450.43/WETH. The USDC amounts do not. Therefore the existing fork test is
-not executing the canonical CSV packet byte-for-byte; even a pass would not
-validate the reported $15.9704789 result without reconciling the packet,
-principal, actual fees, and expected profit.
+| Item | Canonical packet CSV | Original Solidity test |
+|---|---:|---:|
+| USDC cycle 1 input | 615.291004 USDC | 613.997129 USDC |
+| USDC cycle 2 input | 469.664999 USDC | 468.677356 USDC |
+| USDC reusable flash principal | 615.291004 USDC | 613.997129 USDC |
 
-The Solidity assertion only requires positive WETH and USDC residue after a
-35% haircut and a $1 buffer. It does not assert that the realized net HardNAV
-gain reaches the model's $15.9704789.
+The four WETH amounts already matched the CSV at the snapshot model price
+$2,450.43/WETH. In this audit branch, the USDC flash principal and both USDC
+cycle inputs have been aligned to the canonical packet values. This is a
+source-level consistency fix, **not** proof that the fork executes or that
+the modeled $15.9704789 is realized.
+
+The Solidity assertion currently proves only positive post-reserve HardNAV,
+not that the realized gain equals the surrogate estimate. Exact fork execution
+and gas/fee evidence remain mandatory.
 
 ## Route coverage boundary
 The global discovery graph records 211 foreign pools, but the strict candidate
