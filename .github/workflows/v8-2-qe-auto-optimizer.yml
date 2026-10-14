@@ -1,0 +1,49 @@
+name: V8.2 QE Auto Optimizer
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [v8-profit-engine]
+    paths:
+      - "src/synergy_graph/v8_2_auto_optimizer.py"
+      - "scripts/run_v8_2_auto_optimizer.py"
+      - "tests/test_v8_2_auto_optimizer.py"
+      - "contracts/V8_1SingleContractFlashGraph.sol"
+      - "test/V8SingleContractFlashFork.t.sol"
+      - ".github/workflows/v8-2-qe-auto-optimizer.yml"
+
+jobs:
+  qe-design-search:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install Python dependencies
+        run: pip install -r requirements.txt pytest
+      - name: Prove V8.2 QE causality and denomination closure
+        run: pytest -q tests/test_v8_2_auto_optimizer.py
+      - name: Search RUBC/RUBX q/R 0-5pct, flash 500-10000, edges 2-10
+        run: python scripts/run_v8_2_auto_optimizer.py --top-k 100 --max-pol-usd 500
+      - name: Upload V8.2 optimizer result
+        uses: actions/upload-artifact@v4
+        with:
+          name: v8-2-qe-auto-optimizer
+          path: data/results/v8_2_qe_auto_optimizer.json
+
+  exact-fork-gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      BASE_RPC_URL: https://base-rpc.publicnode.com
+    steps:
+      - uses: actions/checkout@v4
+      - uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: stable
+      - name: Compile V8.1 single-contract executor
+        run: forge build
+      - name: Execute pinned Base QE-gated flash proof
+        run: forge test --match-contract V8SingleContractFlashForkTest -vvvv

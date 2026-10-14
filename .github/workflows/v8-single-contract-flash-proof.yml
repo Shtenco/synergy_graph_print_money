@@ -1,0 +1,46 @@
+name: V8 single-contract flash proof
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [v8-single-contract-flash-proof]
+    paths:
+      - "contracts/V8SynergyGraphMoney.sol"
+      - "src/synergy_graph/v8_flash_optimizer.py"
+      - "scripts/run_v8_flash_search.py"
+      - "tests/test_v8_flash_optimizer.py"
+      - "test/V8SingleContractFlashFork.t.sol"
+      - ".github/workflows/v8-single-contract-flash-proof.yml"
+
+jobs:
+  accounting-and-search:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      BASE_RPC_URL: https://base-rpc.publicnode.com
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install Python dependencies
+        run: pip install -r requirements.txt pytest
+      - name: Strict optimizer accounting tests
+        run: pytest -q tests/test_v8_flash_optimizer.py
+      - name: Search 2k-10k strict flash range
+        run: python scripts/run_v8_flash_search.py --mode both --min-flash-usd 2000 --max-flash-usd 10000
+
+  fork-execution:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      BASE_RPC_URL: https://base-rpc.publicnode.com
+    steps:
+      - uses: actions/checkout@v4
+      - uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: stable
+      - name: Compile
+        run: forge build
+      - name: Single-contract Base flash fork
+        run: forge test --match-contract V8SingleContractFlashForkTest -vvvv
