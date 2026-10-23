@@ -160,17 +160,17 @@ V7.4 is **research / simulation / fork-validation code**, not an audited product
 <!-- SYNERGY-FEDERATION-PASSPORT:START -->
 ---
 
-## 🧭 SYNERGY federation passport
+##  SYNERGY federation passport
 
-**Домен:** 💸 Monetary graph / Economic OS  
+**Домен:**  Monetary graph / Economic OS  
 **Архитектурный родитель:** [`synergy_ai_blockchain`](https://github.com/Shtenco/synergy_ai_blockchain)  
 **Архитектурный корень:** [`synergy_system`](https://github.com/Shtenco/synergy_system)
 
 ```mermaid
 flowchart LR
-    SYS[🧭 synergy_system] --> P[synergy_ai_blockchain]
+    SYS[ synergy_system] --> P[synergy_ai_blockchain]
     P --> THIS[synergy_graph_print_money]
-    THIS --> E[📦 Evidence / outputs]
+    THIS --> E[ Evidence / outputs]
 ```
 
 ### Документационный контракт
@@ -179,9 +179,9 @@ README должен показывать: проблему → архитект�
 
 ### Навигация
 
-- [📚 Атлас всех 75 репозиториев](https://github.com/Shtenco/synergy_system/blob/main/docs/SYNERGY_REPOSITORY_ATLAS.md)
-- [🧾 Машиночитаемый registry](https://github.com/Shtenco/synergy_system/blob/main/registry/SYNERGY_REPOSITORIES.json)
-- [🧭 SYNERGY SYSTEM](https://github.com/Shtenco/synergy_system)
+- [ Атлас всех 75 репозиториев](https://github.com/Shtenco/synergy_system/blob/main/docs/SYNERGY_REPOSITORY_ATLAS.md)
+- [ Машиночитаемый registry](https://github.com/Shtenco/synergy_system/blob/main/registry/SYNERGY_REPOSITORIES.json)
+- [ SYNERGY SYSTEM](https://github.com/Shtenco/synergy_system)
 
 ### Authority rule
 
@@ -191,7 +191,7 @@ README должен показывать: проблему → архитект�
 
 ---
 
-# 💸 Глубокий доказательный паспорт Graph Print Money
+#  Глубокий доказательный паспорт Graph Print Money
 
 ## Что реально сильного в `main`
 
