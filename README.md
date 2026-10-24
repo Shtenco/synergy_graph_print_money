@@ -1,3 +1,9 @@
+<!-- SCIENTIFIC-V3-2026:START -->
+<img src="assets/readme/scientific-architecture-v3.svg" width="100%" alt="GRAPH ECONOMY V7.4"/>
+
+[Научно-техническое досье V3](docs/SCIENTIFIC_DOSSIER_V3_2026.md) — исследовательские идеи, формализация и эксперименты. Исходный README сохранён полностью.
+<!-- SCIENTIFIC-V3-2026:END -->
+
 # SYNERGY Graph Print Money — Economic OS / SAG V7.4
 
 > **PRIMARY / CANONICAL VERSION: V7.4**  
